@@ -1,7 +1,8 @@
 import os, json, sqlite3, secrets, hmac, time, hashlib, csv, io
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
+from market import search
 from threading import Lock
 P=os.environ['RADAR_PASSWORD']; K=os.environ['SESSION_SECRET'].encode()
 DB=os.getenv('DB_PATH','radar.db')
@@ -42,6 +43,9 @@ class H(BaseHTTPRequestHandler):
    with db() as c: c.execute('SELECT 1')
    return self.send({'ok':True})
   if not self.auth(): return self.send({'error':'Anmeldung erforderlich'},401)
+  if p=='/api/search':
+   q=parse_qs(urlparse(self.path).query)
+   return self.send(search(q.get('q',[''])[0][:200],q.get('min',[''])[0][:20],q.get('max',[''])[0][:20]))
   if p=='/api/status': return self.send({'database':'online','provider':'nicht verbunden','scanner':'nicht aktiv','storage':'SQLite; Render Free nicht dauerhaft'})
   if p=='/api/export':
    a=rows('inventory'); out=io.StringIO(); keys=['title','brand','size','category','price','shipping','fee','extra','target','sale','selling','status','cost','potential','realized','roi']; w=csv.DictWriter(out,fieldnames=keys,extrasaction='ignore'); w.writeheader()
